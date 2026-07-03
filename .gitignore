@@ -1,0 +1,14 @@
+# scratch/ — temporary state files
+scratch/
+
+# data/raw/ — local data (large)
+data/raw/
+
+# Python
+scripts/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OS
+.DS_Store

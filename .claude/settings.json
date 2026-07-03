@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__kaggle-mcp__search_kaggle_datasets",
+      "mcp__kaggle-mcp__download_kaggle_dataset",
+      "mcp__kaggle-mcp__generate_eda_notebook",
+      "mcp__colab-mcp__open_colab_browser_connection",
+      "mcp__colab-mcp__execute_code",
+      "mcp__colab-mcp__add_code_cell",
+      "mcp__colab-mcp__add_text_cell",
+      "mcp__colab-mcp__get_cells",
+      "Read",
+      "Write",
+      "Edit",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(python scripts/review/*)",
+      "Bash(python scripts/_fixtures/*)",
+      "Bash(python3 scripts/review/*)",
+      "Bash(python3 scripts/_fixtures/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(pip install *)",
+      "Bash(conda *)"
+    ]
+  }
+}

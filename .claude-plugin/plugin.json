@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "analyze-trust-suite",
+  "displayName": "Analyze + Trust Suite",
+  "version": "1.1.0",
+  "description": "End-to-end data analysis pipeline + trust evaluation + meta-orchestrator. 6-stage analysis (define-analysis → kaggle-discover → {colab,local}-setup → hypothesis-eda → analysis-cycle → verify-report) + 4-stage trust (trust-metrics-llm ∥ trust-metrics-code → qa-reviewer → head-of-data) + 10-step meta-orchestrator (/analyze-trust). Plus Ralph Loop (wonder→reflect→restate), post-hoc review harness, and dashboard-state migration.",
+  "author": {
+    "name": "sh-ai-x",
+    "url": "https://github.com/sh-ai-x"
+  },
+  "repository": "https://github.com/sh-ai-x/analyze-trust-suite",
+  "license": "MIT",
+  "keywords": [
+    "data-analysis",
+    "kaggle",
+    "colab",
+    "eda",
+    "machine-learning",
+    "harness",
+    "trust",
+    "llm-judge",
+    "qa-reviewer",
+    "head-of-data",
+    "orchestrator",
+    "analyze-trust",
+    "ralph",
+    "publish-gate",
+    "hallucination",
+    "groundedness",
+    "confidence"
+  ]
+}
