@@ -254,72 +254,55 @@ docs/reports/YYYYMMDD-goal.html    (브라우저용)
 
 ---
 
-## Step 5.5 — Dashboard 동기화 [CLAUDE]
+## Step 5.5 — Results vault 동기화 [CLAUDE]
 
-대시보드가 자동으로 새 분석을 인식하도록 `docs/dashboard-state.json` 갱신.
+분석 결과를 `data-analysis-results` vault 레포에 자동 등록. `scratch/head-of-data-decision.md` 의 메타데이터를 모아 `docs/INDEX.md` 를 갱신한다.
 
-**수집**:
-- `scratch/head-of-data-decision.md` → decision, decided_at, llm_verdict, code_verdict, qa_verdict
-- `docs/reports/YYYYMMDD-<goal>.{ipynb,html,md}` → 존재 확인 + 경로
+**Vault 레포 경로** (env 또는 `DATA_ANALYSIS_RESULTS_DIR` 환경변수로 override 가능):
+- 기본: `/Users/sanghee/dev/data-analysis-results/`
+- vault 없으면 → `[skip] vault 레포 미설정. 수동 복사 필요.`
 
 **갱신 로직**:
 
 ```python
-# scripts/update_dashboard_state.py (공통, env 무관)
-import json, datetime
+# vault 레포의 scripts/update_index.py 가 docs/INDEX.md 를 재생성한다.
+# verify-report 는 vault 가 있으면 실행, 없으면 skip.
+import subprocess
 from pathlib import Path
 
-state_path = Path('docs/dashboard-state.json')
-if state_path.exists():
-    state = json.loads(state_path.read_text())
+vault = Path(os.environ.get("DATA_ANALYSIS_RESULTS_DIR", "/Users/sanghee/dev/data-analysis-results"))
+if not (vault / "scripts" / "update_index.py").exists():
+    print("[skip] vault 레포 미설정. 수동 복사 필요.")
 else:
-    state = {"version": 1, "goals": []}
-
-# 현재 goal의 decision 메타데이터 읽기
-decision_md = Path('scratch/head-of-data-decision.md')
-meta = {}
-if decision_md.exists():
-    for line in decision_md.read_text().split('\n'):
-        if line.startswith('decision:') or line.startswith('decided_at:'):
-            k, v = line.split(':', 1)
-            meta[k.strip()] = v.strip()
-
-# 오늘 날짜
-today = datetime.date.today().strftime('%Y%m%d')
-
-# goal 엔트리 갱신 또는 추가
-goal_entry = {
-    "goal": "{goal_slug}",
-    "date": today,
-    "decision": meta.get('decision', 'UNKNOWN'),
-    "llm_verdict": meta.get('llm_verdict', 'UNKNOWN'),
-    "code_verdict": meta.get('code_verdict', 'UNKNOWN'),
-    "qa_verdict": meta.get('qa_verdict', 'UNKNOWN'),
-    "decided_at": meta.get('decided_at', ''),
-    "reports": {
-        "md": f"docs/reports/{today}-{goal_slug}.md",
-        "ipynb": f"docs/reports/{today}-{goal_slug}.ipynb",
-        "html": f"docs/reports/{today}-{goal_slug}.html",
-    }
-}
-
-# 중복 제거 (같은 goal이 있으면 갱신, 없으면 추가)
-state['goals'] = [g for g in state['goals'] if g['goal'] != goal_slug]
-state['goals'].append(goal_entry)
-state['updated_at'] = datetime.datetime.now().isoformat()
-
-state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
-print(f"[dashboard-state] {len(state['goals'])}개 goal 등록")
+    # 1. 이번 goal 의 산출물 복사
+    today = datetime.date.today().strftime('%Y%m%d')
+    src_reports = Path('docs/reports')
+    if src_reports.exists():
+        for ext in ('md', 'ipynb', 'html'):
+            for f in src_reports.glob(f'*-{goal_slug}.{ext}'):
+                shutil.copy(f, vault / 'docs' / 'reports' / f.name)
+    src_plans = Path('docs/plans')
+    if (src_plans / f'{goal_slug}.md').exists():
+        shutil.copy(src_plans / f'{goal_slug}.md', vault / 'docs' / 'plans' / f'{today}-{goal_slug}.md')
+    # 2. scratch 메타파일 복사
+    for name in ('analysis-cycle', 'trust-metrics-llm', 'trust-metrics-code', 'qa-review', 'head-of-data-decision'):
+        for f in Path('scratch').glob(f'{name}*-{goal_slug}.md'):
+            shutil.copy(f, vault / 'scratch' / f.name)
+    # 3. INDEX.md 재생성
+    subprocess.run(['python3', str(vault / 'scripts' / 'update_index.py')], cwd=vault, check=False)
+    print(f"[vault] {goal_slug} → {vault}")
 ```
 
 **Bash**:
 ```bash
-Bash("python scripts/update_dashboard_state.py")
+Bash("python scripts/verify_report_step_5_5.py <goal_slug>")
+# 또는 환경변수로 vault 경로 override:
+Bash("DATA_ANALYSIS_RESULTS_DIR=/path/to/vault python scripts/verify_report_step_5_5.py <goal_slug>")
 ```
 
 **예외 처리**:
-- `head-of-data-decision.md` 없음 → `[skip] decision 메타데이터 없음. /head-of-data 먼저 실행.`
-- `docs/dashboard-state.json` 권한 없음 → `[warn] state.json 쓰기 실패. 수동 갱신 필요.`
+- vault 레포 없음 → `[skip] vault 레포 미설정. 수동 복사 필요.`
+- `head-of-data-decision-<goal>.md` 없음 → `[warn] decision 메타데이터 없음. /head-of-data 먼저 실행.`
 
 ---
 
@@ -332,10 +315,11 @@ Bash("python scripts/update_dashboard_state.py")
   - docs/reports/YYYYMMDD-<goal>.ipynb  (executed notebook)
   - docs/reports/YYYYMMDD-<goal>.html   (브라우저 리포트)
   - docs/reports/YYYYMMDD-<goal>.md     (요약)
-  - docs/dashboard-state.json           (대시보드 자동 등록)
+  - data-analysis-results/             (vault 자동 동기화)
 
- 브라우저에서 대시보드 확인:
-  open http://localhost:8000/  # 사이드바에 새 goal 자동 표시됨"
+ Vault 확인:
+  - INDEX: cat data-analysis-results/docs/INDEX.md
+  - GitHub: https://github.com/sh-ai-x/data-analysis-results"
 ```
 
 → **[USER]** 최종 확인
