@@ -6,7 +6,7 @@ name: PR Review (MiniMax)
 # claude-code-action auto-loads .claude/skills/review-code/ from the
 # checkout, so the slash command resolves and the skill runs as designed.
 #
-# Default provider: MiniMax (MINMAX_API_KEY secret).
+# Default provider: MiniMax (MINMAX_API_KEY secret) — model MiniMax-M3[1m].
 # Opt-in to Anthropic per-run:
 #   Actions → PR Review (MiniMax) → Run workflow →
 #     review_provider: anthropic, pr_number: <N>
