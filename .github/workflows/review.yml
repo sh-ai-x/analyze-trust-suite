@@ -179,8 +179,14 @@ jobs:
             | grep -E '^\*\*Verdict:\*\*' | tail -1 | awk '{print $NF}' || true)"
           if [ "$verdict" = "Approve" ]; then
             echo "Verdict is Approve — auto-approving PR."
-            gh pr review "$PR_NUMBER" --approve \
-              --body "Auto-approved by /review-code (MiniMax-M3[1m]): no 🔴 critical, no 🟠 major."
+            # Fail-open: the default GITHUB_TOKEN can't approve PRs on some repos
+            # (GraphQL: GitHub Actions is not permitted to approve pull requests).
+            # If the approval call fails, log it but don't fail the check — the
+            # severity gate already passed.
+            if ! gh pr review "$PR_NUMBER" --approve \
+              --body "Auto-approved by /review-code (MiniMax-M3[1m]): no 🔴 critical, no 🟠 major."; then
+              echo "::warning::Auto-approve failed (token may lack approval permission). Severity gate already passed — manual approval still safe."
+            fi
           else
             echo "Verdict is '$verdict' — not auto-approving."
           fi
