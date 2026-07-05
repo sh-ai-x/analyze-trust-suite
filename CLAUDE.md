@@ -1,6 +1,6 @@
 # analyze-trust-suite
 
-End-to-end data analysis + trust evaluation + meta-orchestrator in one plugin. Replaces the legacy 3-plugin setup (`analyze-orchestrator`, `harness-data-analysis`, `data-team-trust`).
+End-to-end data analysis + trust evaluation + meta-orchestrator in one plugin. Replaces the legacy 3-plugin setup (`analyze-orchestrator`, `harness-data-analysis`, `data-team-trust`). PR review is wired to MiniMax-M3[1m] via `.github/workflows/review.yml`.
 
 ---
 
