@@ -6,7 +6,7 @@ description: |
   재실행 필수. LLM Judge 호출은 하지 않음 (read-only 평가 금지).
   Triggers: trust-metrics-code, 컴퓨테이션 트러스트, 코드 평가, 그라운디드.넘버릭
   Prerequisite: scratch/analysis-cycle.md best_score + best_model/best_features 존재
-  Depends on: harness-data-analysis (분석 6단계)
+  Depends on: Phase A (define-analysis → analysis-cycle → verify-report)
   Skip when: 동일 goal의 scratch/trust-metrics-code.md가 1시간 이내라면 → 재사용 제안
 ---
 

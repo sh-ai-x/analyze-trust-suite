@@ -11,4 +11,4 @@ scripts/__pycache__/
 .pytest_cache/
 
 # OS
-.DS_Store
+.DS_Store.env

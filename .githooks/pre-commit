@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Fast local review gate — blocks a commit only on CRITICAL correctness/security
+# defects in the staged diff. Fail-open by design: any tooling problem (no CLI, no
+# key, timeout) lets the commit through — CI is the backstop. Bypass with:
+#   git commit --no-verify
+#
+# Default provider: MiniMax (MINMAX_API_KEY in .env → routed through the
+# Anthropic-compatible `claude` CLI via ANTHROPIC_BASE_URL).
+# Opt-in to real Claude (Anthropic API) for a single commit:
+#   REVIEW_PROVIDER=anthropic git commit ...
+# (requires ANTHROPIC_API_KEY in .env or env).
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+# Load keys from .env if not already in the environment.
+if [ -f "$ROOT/.env" ]; then
+  set -a; . "$ROOT/.env" 2>/dev/null; set +a
+fi
+
+pass_open() { echo "pre-commit review: $1 — skipping (fail-open)"; exit 0; }
+
+command -v claude >/dev/null 2>&1 || pass_open "claude CLI not found"
+
+# Provider selection: default MiniMax, opt-in Anthropic via REVIEW_PROVIDER.
+if [ "${REVIEW_PROVIDER:-}" = "anthropic" ]; then
+  [ -n "${ANTHROPIC_API_KEY:-}" ] || pass_open "REVIEW_PROVIDER=anthropic but no ANTHROPIC_API_KEY"
+  # Real Claude Code: leave base URL alone, do not override auth.
+  PROMPT_HEADER=""
+  MODEL_FLAG="--model sonnet"
+  PROV_LABEL="claude"
+else
+  [ -n "${MINMAX_API_KEY:-}" ] || pass_open "no MINMAX_API_KEY (set REVIEW_PROVIDER=anthropic to opt out)"
+  # Route the Anthropic-compatible `claude` CLI at MiniMax.
+  export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"
+  export ANTHROPIC_AUTH_TOKEN="$MINMAX_API_KEY"
+  export ANTHROPIC_MODEL="MiniMax-M3[1m]"
+  export ANTHROPIC_DEFAULT_SONNET_MODEL="MiniMax-M3[1m]"
+  export ANTHROPIC_DEFAULT_OPUS_MODEL="MiniMax-M3[1m]"
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL="MiniMax-M3[1m]"
+  PROMPT_HEADER="[provider: minimax · model: MiniMax-M3[1m]]"
+  MODEL_FLAG="--model sonnet"
+  PROV_LABEL="minimax"
+fi
+
+# Staged source files only (Added/Copied/Modified). Use a while-read loop
+# instead of `mapfile` for bash 3.2 compatibility (macOS default bash).
+files=()
+while IFS= read -r f; do
+  [ -n "$f" ] && files+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM \
+  -- '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.rs' '*.java' '*.rb' 2>/dev/null)
+[ "${#files[@]}" -eq 0 ] && exit 0
+
+diff="$(git diff --cached -U3 -- "${files[@]}")"
+[ -z "$diff" ] && exit 0
+
+read -r -d '' PROMPT <<EOF
+${PROMPT_HEADER}
+Review the staged git diff below for CRITICAL defects ONLY — real, demonstrable
+correctness or security bugs that break behavior, crash, or are exploitable, each with
+a concrete trigger. Ignore style, naming, nits, and hypotheticals. Be strict about
+false positives: if a guard/sanitizer/allowlist/bound-parameter already handles it, do
+NOT report it.
+
+If you find one or more CRITICAL issues, respond with a first line exactly:
+VERDICT: BLOCK
+then one line per issue: "- <file>:<line> — <one-line reason>".
+If there are none, respond with exactly:
+VERDICT: PASS
+
+Diff:
+EOF
+
+runner=(claude -p "$PROMPT"$'\n'"$diff" --output-format json $MODEL_FLAG --allowedTools "")
+if command -v timeout >/dev/null 2>&1; then runner=(timeout 120 "${runner[@]}"); fi
+
+resp="$("${runner[@]}" 2>/dev/null)" || pass_open "review call failed ($PROV_LABEL)"
+result="$(printf '%s' "$resp" | (command -v jq >/dev/null 2>&1 && jq -r '.result // empty' || cat))"
+[ -n "$result" ] || pass_open "empty review response ($PROV_LABEL)"
+
+if printf '%s' "$result" | grep -q 'VERDICT: BLOCK'; then
+  echo "──────────────────────────────────────────────"
+  echo "❌ pre-commit review BLOCKED ($PROV_LABEL) — critical issue(s):"
+  printf '%s\n' "$result" | grep -E '^- ' || true
+  echo "──────────────────────────────────────────────"
+  echo "Fix them, or bypass with: git commit --no-verify"
+  exit 1
+fi
+
+echo "✅ pre-commit review ($PROV_LABEL): no critical issues"
+exit 0

@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Pre-push guard:
+#   1) Block direct pushes to `main` (PR-only policy). Bypass with
+#      SKIP_MAIN_CHECK=1 git push ... or git push --no-verify.
+#   2) Auto-switch gh CLI account based on the push target's GitHub owner
+#      (delegates to ~/.config/gh-autoswitch/gh-autoswitch.sh if present).
+set -euo pipefail
+
+remote_url="${2:-}"
+
+# 1) Block direct pushes to main.
+if [ -z "${SKIP_MAIN_CHECK:-}" ]; then
+  # Read stdin lines: "<local-ref> <local-sha> <remote-ref> <remote-sha>"
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -z "$remote_ref" ] && continue
+    if [ "$remote_ref" = "refs/heads/main" ]; then
+      echo "❌ Direct push to main is blocked. Open a PR instead:"
+      echo "     git checkout -b feat/<short-name>"
+      echo "     git push -u origin feat/<short-name>"
+      echo "     gh pr create"
+      echo ""
+      echo "Bypass (emergency only): SKIP_MAIN_CHECK=1 git push ... --no-verify"
+      exit 1
+    fi
+  done
+fi
+
+# 2) gh-autoswitch — same as before.
+if [ -z "$remote_url" ]; then
+  exit 0
+fi
+
+if [ -x "$HOME/.config/gh-autoswitch/gh-autoswitch.sh" ]; then
+  "$HOME/.config/gh-autoswitch/gh-autoswitch.sh" "$remote_url"
+fi

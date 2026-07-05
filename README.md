@@ -129,6 +129,49 @@ See [CLAUDE.md](./CLAUDE.md) for details.
 
 This copies all 24 skills into `<target>/.claude/skills/` and creates `scratch/`, `docs/plans/`, `docs/reports/`, `scripts/`, `data/raw/` directories. The target repo can then run any of the 24 skills via Claude Code.
 
+## PR review (MiniMax-M3[1m])
+
+Every PR runs `/review-code` automatically — a parallel correctness + security + architecture pass with a verifier, gated on severity and auto-approved on the lowest tier.
+
+| Layer | Where | Provider |
+|---|---|---|
+| Pre-commit (local) | `.githooks/pre-commit` | MiniMax (default), Anthropic opt-in |
+| PR review (CI) | `.github/workflows/review.yml` | MiniMax (default), Anthropic opt-in |
+| Legacy Anthropic-native review | `.github/workflows/claude-code-review.yml` | Anthropic — opt-in via `claude-code-review` label |
+
+### CI setup (one-time per repo)
+
+1. Install the [Claude GitHub App](https://github.com/apps/claude) on the repo (Contents/Issues/PRs read+write).
+2. Set the secrets:
+   ```bash
+   gh secret set MINMAX_API_KEY        # default reviewer (MiniMax-M3[1m])
+   gh secret set ANTHROPIC_API_KEY     # opt-in reviewer
+   ```
+3. Open a PR — the `PR Review (MiniMax)` workflow fans out 3 reviewer agents, posts a
+   verdict (`Approve` / `Changes Requested` / `Blocked`), and auto-approves on `Approve`.
+
+### Manual override
+
+Re-run on demand with a different provider:
+
+```
+Actions → PR Review (MiniMax) → Run workflow
+  review_provider: anthropic
+  pr_number: 42
+```
+
+### Local pre-commit (optional)
+
+```bash
+git config core.hooksPath .githooks
+cp .env.example .env   # then fill in MINMAX_API_KEY
+```
+
+Bypass per-commit: `git commit --no-verify`. Opt out of MiniMax for one commit:
+`REVIEW_PROVIDER=anthropic git commit ...`.
+
+---
+
 ## Migration from 3-plugin setup
 
 If you previously had `~/.claude/skills/{analyze-orchestrator,harness-data-analysis,data-team-trust}/`, remove them after this plugin is verified:

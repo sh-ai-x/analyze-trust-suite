@@ -1,11 +1,10 @@
 ---
 name: analyze-trust
 description: |
-  단일 진입점 메타 오케스트레이터. 6단계 분석(harness-data-analysis) + 4단계 트러스트 평가(data-team-trust) + PUBLISH 게이트 + verify-report 발행을 차례로 안내하는 가이드 모드.
+  단일 진입점 메타 오케스트레이터. 6단계 분석 + 4단계 트러스트 평가 + PUBLISH 게이트 + verify-report 발행을 차례로 안내하는 가이드 모드.
   각 사용자 결정 게이트(plan 승인, env 선택, 가설 승인, PUBLISH 결정)에서 대기한다.
   가이드 모드: 자동 디스패치 아님. 호출할 때마다 현재 상태를 진단해 다음 단계를 안내.
   Triggers: analyze-trust, 전체 분석, 통합 진입점, 풀 사이클
-  Prerequisite: harness-data-analysis + data-team-trust 플러그인 설치
 ---
 
 # analyze-trust — 메타 오케스트레이터
@@ -18,12 +17,12 @@ description: |
 
 ## 의존성
 
-본 스킬은 다음 두 플러그인에 의존:
+이 메타 오케스트레이터는 다음 내부 스킬에 위임한다 (모두 동일 플러그인 `analyze-trust-suite`에 포함):
 
-- `harness-data-analysis` — 6단계 분석
-- `data-team-trust` — 4단계 검증 + PUBLISH 결정 게이트
+- **Phase A (분석 6단계)**: `define-analysis`, `kaggle-discover`, `colab-setup` / `local-setup`, `hypothesis-eda`, `analysis-cycle`, `verify-report`
+- **Phase B (검증 4단계)**: `trust-metrics-llm`, `trust-metrics-code`, `qa-reviewer`, `head-of-data`
 
-둘 중 하나라도 없으면 안내만 가능. 실제 단계 실행은 다른 플러그인에 위임.
+플러그인이 설치되어 있으면 모든 단계를 안내할 수 있다. 실제 단계 실행은 위 스킬에 위임.
 
 ---
 
@@ -69,7 +68,8 @@ goal 추출 후 현재 진행 상태 진단:
 | kaggle-discover 있음 + setup 없음 | `[3단계] /{colab-setup\|local-setup} 호출 (env=<env>)` |
 | setup 있음 + hypothesis-eda 없음 | `[4단계] /hypothesis-eda 호출` |
 | hypothesis-eda 있음 + analysis-cycle 없음 | `[5단계] /analysis-cycle 호출 (top_hypotheses 기반)` |
-| analysis-cycle 있음 (best_score) + reports 없음 | `(검증 단계로 이동. /analyze-trust 재호출 권장)` |
+| analysis-cycle 있음 (best_score) + reports 없음 | `[6단계] /verify-report 호출 (재실행 + 보고서 발행)` |
+| analysis-cycle + reports 모두 있음 | `(Phase B 검증 단계로 이동. /analyze-trust 재호출 권장)` |
 
 ### Phase B: 검증 (4단계)
 
@@ -130,20 +130,11 @@ goal: <goal>
 
 ---
 
-## Step 3 — 의존성 미설치 시 [CLAUDE]
+## Step 3 — 의존성 확인 [CLAUDE]
 
-다음 둘 중 하나라도 없으면:
+Phase A·B의 스킬이 모두 `~/.claude/skills/analyze-trust-suite/skills/` 하위에 있는지 확인한다. 하나라도 없으면 진단만 안내하고 실제 단계 호출은 사용자가 별도 설치 후 진행하도록 한다.
 
-```
-"[error] 의존성 플러그인 미설치:
- - harness-data-analysis (~/.claude/skills/harness-data-analysis/)
- - data-team-trust (~/.claude/skills/data-team-trust/)
-
-설치 후 다시 시도해주세요.
-git clone <url> ~/.claude/skills/<plugin>"
-```
-
-→ 즉시 중단. 다른 안내 불가.
+> 참고: 옛 플러그인 (`harness-data-analysis`, `data-team-trust`, `analyze-orchestrator`)은 v1.1.0에서 `analyze-trust-suite`로 통합되었으며 더 이상 지원되지 않는다. 레거시 경로가 보이면 마이그레이션 가이드를 안내한다.
 
 ---
 
