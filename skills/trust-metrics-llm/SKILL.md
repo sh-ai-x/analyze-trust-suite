@@ -6,7 +6,7 @@ description: |
   LLM Judge 호출만 허용. 코드 실행 / 모델 학습은 trust-metrics-code 책임.
   Triggers: trust-metrics-llm, 시맨틱 트러스트, LLM 평가, 그라운디드
   Prerequisite: scratch/analysis-cycle.md best_score 존재, docs/reports/<goal>.md 존재
-  Depends on: harness-data-analysis (분석 6단계)
+  Depends on: Phase A (define-analysis → analysis-cycle → verify-report)
   Skip when: 동일 goal의 scratch/trust-metrics-llm.md가 1시간 이내라면 → 재사용 제안
 ---
 
