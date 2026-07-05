@@ -11,4 +11,9 @@ scripts/__pycache__/
 .pytest_cache/
 
 # OS
-.DS_Store.env
+.DS_Store
+
+# Local env (never commit)
+.env
+.env.*
+!.env.example
